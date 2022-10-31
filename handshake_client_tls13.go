@@ -17,7 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	circlKem "circl/kem"
+	circlKem "github.com/cloudflare/circl/kem"
 )
 
 type clientHandshakeStateTLS13 struct {

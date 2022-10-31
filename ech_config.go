@@ -4,8 +4,8 @@
 package tls
 
 import (
-	"circl/hpke"
-	"circl/kem"
+	"github.com/cloudflare/circl/hpke"
+	"github.com/cloudflare/circl/kem"
 	"errors"
 	"fmt"
 	"io"

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"testing"
 
-	"circl/kem"
-	"circl/kem/hybrid"
+	"github.com/cloudflare/circl/kem"
+	"github.com/cloudflare/circl/kem/hybrid"
 )
 
 func testHybridKEX(t *testing.T, scheme kem.Scheme, clientPQ, serverPQ,

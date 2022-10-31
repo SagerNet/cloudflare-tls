@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"io"
 
-	"circl/kem"
-	"circl/kem/hybrid"
+	"github.com/cloudflare/circl/kem"
+	"github.com/cloudflare/circl/kem/hybrid"
 )
 
 // Either ecdheParameters or kem.PrivateKey

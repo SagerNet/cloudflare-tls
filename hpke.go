@@ -4,7 +4,7 @@
 package tls
 
 import (
-	"circl/hpke"
+	"github.com/cloudflare/circl/hpke"
 	"errors"
 	"fmt"
 )

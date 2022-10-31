@@ -53,7 +53,7 @@ package tls
 // https://www.imperialviolet.org/2013/02/04/luckythirteen.html.
 
 import (
-	circlSign "circl/sign"
+	circlSign "github.com/cloudflare/circl/sign"
 
 	"bytes"
 	"context"

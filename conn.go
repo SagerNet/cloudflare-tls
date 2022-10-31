@@ -8,7 +8,7 @@ package tls
 
 import (
 	"bytes"
-	"circl/hpke"
+	"github.com/cloudflare/circl/hpke"
 	"context"
 	"crypto/cipher"
 	"crypto/subtle"

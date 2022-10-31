@@ -10,8 +10,8 @@
 package main
 
 import (
-	circlSign "circl/sign"
-	circlSchemes "circl/sign/schemes"
+	circlSign "github.com/cloudflare/circl/sign"
+	circlSchemes "github.com/cloudflare/circl/sign/schemes"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"

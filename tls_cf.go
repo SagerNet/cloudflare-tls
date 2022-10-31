@@ -4,10 +4,10 @@
 package tls
 
 import (
-	circlPki "circl/pki"
-	circlSign "circl/sign"
+	circlPki "github.com/cloudflare/circl/pki"
+	circlSign "github.com/cloudflare/circl/sign"
 
-	"circl/sign/eddilithium3"
+	"github.com/cloudflare/circl/sign/eddilithium3"
 	"time"
 )
 

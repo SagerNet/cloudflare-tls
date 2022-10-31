@@ -13,7 +13,7 @@
 package main
 
 import (
-	circlSign "circl/sign"
+	circlSign "github.com/cloudflare/circl/sign"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
