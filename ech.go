@@ -11,6 +11,7 @@ import (
 	"github.com/cloudflare/circl/hpke"
 
 	"golang.org/x/crypto/cryptobyte"
+	"context"
 )
 
 const (
@@ -40,7 +41,7 @@ var (
 //
 // TODO(cjpatton): "[When offering ECH, the client] MUST NOT offer to resume any
 // session for TLS 1.2 and below [in ClientHelloInner]."
-func (c *Conn) echOfferOrGrease(helloBase *clientHelloMsg) (hello, helloInner *clientHelloMsg, err error) {
+func (c *Conn) echOfferOrGrease(ctx context.Context, helloBase *clientHelloMsg) (hello, helloInner *clientHelloMsg, err error) {
 	config := c.config
 
 	if !config.ECHEnabled || testingECHTriggerBypassBeforeHRR {
@@ -50,7 +51,10 @@ func (c *Conn) echOfferOrGrease(helloBase *clientHelloMsg) (hello, helloInner *c
 
 	// Choose the ECHConfig to use for this connection. If none is available, or
 	// if we're not offering TLS 1.3 or above, then GREASE.
-	echConfig := config.echSelectConfig()
+	echConfig, err := config.echSelectConfig(ctx, helloBase.serverName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("tls: ech: fetch ech config: %s", err)
+	}
 	if echConfig == nil || config.maxSupportedVersion(roleClient) < VersionTLS13 {
 		var err error
 
@@ -1023,14 +1027,26 @@ func splitClientHelloExtensions(data []byte) ([]byte, []byte) {
 //
 // TODO(cjpatton): Implement ECH config extensions as described in
 // draft-ietf-tls-esni-13, Section 4.1.
-func (c *Config) echSelectConfig() *ECHConfig {
+func (c *Config) echSelectConfig(ctx context.Context, serverName string) (*ECHConfig, error) {
 	for _, echConfig := range c.ClientECHConfigs {
 		if _, err := echConfig.selectSuite(); err == nil &&
 			echConfig.version == extensionECH {
-			return &echConfig
+			return &echConfig, nil
 		}
 	}
-	return nil
+	if c.GetClientECHConfigs != nil {
+		echConfigs, err := c.GetClientECHConfigs(ctx, serverName)
+		if err != nil {
+			return nil, err
+		}
+		for _, echConfig := range echConfigs {
+			if _, err = echConfig.selectSuite(); err == nil &&
+				echConfig.version == extensionECH {
+				return &echConfig, nil
+			}
+		}
+	}
+	return nil, nil
 }
 
 func (c *Config) echCanOffer() bool {
@@ -1038,7 +1054,6 @@ func (c *Config) echCanOffer() bool {
 		return false
 	}
 	return c.ECHEnabled &&
-		c.echSelectConfig() != nil &&
 		c.maxSupportedVersion(roleClient) >= VersionTLS13
 }
 
