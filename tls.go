@@ -53,8 +53,6 @@ package tls
 // https://www.imperialviolet.org/2013/02/04/luckythirteen.html.
 
 import (
-	circlSign "circl/sign"
-
 	"bytes"
 	"context"
 	"crypto"
@@ -68,6 +66,8 @@ import (
 	"net"
 	"os"
 	"strings"
+
+	circlSign "github.com/cloudflare/circl/sign"
 )
 
 // Server returns a new TLS server side connection

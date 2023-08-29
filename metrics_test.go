@@ -4,6 +4,7 @@
 package tls
 
 import (
+	"context"
 	"crypto/x509"
 	"fmt"
 	"io"
@@ -55,12 +56,10 @@ func runHandshake(t *testing.T, clientConfig, serverConfig *Config) (timingState
 	c, s := localPipe(t)
 	errChan := make(chan error)
 
-	clientConfig.CFEventHandler = timingState.eventHandler
-	serverConfig.CFEventHandler = timingState.eventHandler
-
 	go func() {
 		cli := Client(c, clientConfig)
-		err := cli.Handshake()
+		cCtx := context.WithValue(context.Background(), CFEventHandlerContextKey{}, timingState.eventHandler)
+		err := cli.HandshakeContext(cCtx)
 		if err != nil {
 			errChan <- fmt.Errorf("client: %v", err)
 			c.Close()
@@ -78,7 +77,8 @@ func runHandshake(t *testing.T, clientConfig, serverConfig *Config) (timingState
 	}()
 
 	server := Server(s, serverConfig)
-	err = server.Handshake()
+	sCtx := context.WithValue(context.Background(), CFEventHandlerContextKey{}, timingState.eventHandler)
+	err = server.HandshakeContext(sCtx)
 	if err == nil {
 		if _, err := io.WriteString(server, sentinel); err != nil {
 			t.Errorf("failed to call server.Write: %v", err)

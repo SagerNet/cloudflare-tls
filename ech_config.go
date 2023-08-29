@@ -4,11 +4,12 @@
 package tls
 
 import (
-	"circl/hpke"
-	"circl/kem"
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/cloudflare/circl/hpke"
+	"github.com/cloudflare/circl/kem"
 
 	"golang.org/x/crypto/cryptobyte"
 )

@@ -21,7 +21,6 @@ import (
 // crypto/tls directory:
 //
 //	go run generate_cert.go -ecdsa-curve P256 -host 127.0.0.1 -allowDC
-//
 var delegatorCertPEMP256 = `-----BEGIN CERTIFICATE-----
 MIIBejCCAR+gAwIBAgIQKEg6iMq02QUu7QZSZJ/qjzAKBggqhkjOPQQDAjASMRAw
 DgYDVQQKEwdBY21lIENvMB4XDTIxMDIyNzAwMTYwMVoXDTIyMDIyNzAwMTYwMVow

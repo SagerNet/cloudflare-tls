@@ -4,10 +4,11 @@
 package tls
 
 import (
-	"circl/hpke"
-	"circl/kem"
 	"errors"
 	"fmt"
+
+	"github.com/cloudflare/circl/hpke"
+	"github.com/cloudflare/circl/kem"
 
 	"golang.org/x/crypto/cryptobyte"
 )
@@ -215,10 +216,10 @@ func (keySet *EXP_ECHKeySet) GetDecryptionContext(rawHandle []byte, version uint
 // encoding of an ECH Key has the format defined below (in TLS syntax). Note
 // that the ECH standard does not specify this format.
 //
-// struct {
-//     opaque sk<0..2^16-1>;
-//     ECHConfig config<0..2^16>; // draft-ietf-tls-esni-13
-// } ECHKey;
+//	struct {
+//	    opaque sk<0..2^16-1>;
+//	    ECHConfig config<0..2^16>; // draft-ietf-tls-esni-13
+//	} ECHKey;
 type EXP_ECHKey struct {
 	sk     kem.PrivateKey
 	config ECHConfig

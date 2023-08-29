@@ -4,10 +4,11 @@
 package tls
 
 import (
-	"circl/hpke"
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/cloudflare/circl/hpke"
 
 	"golang.org/x/crypto/cryptobyte"
 )
@@ -137,8 +138,12 @@ func (c *Conn) echUpdateClientHelloOuter(hello, helloInner *clientHelloMsg, enc 
 
 	// EncodedClientHelloInner
 	helloInner.raw = nil
+	helloInnerMarshalled, err := helloInner.marshal()
+	if err != nil {
+		return fmt.Errorf("tls: ech: failed to marshal helloInner: %w", err)
+	}
 	encodedHelloInner := echEncodeClientHelloInner(
-		helloInner.marshal(),
+		helloInnerMarshalled,
 		len(helloInner.serverName),
 		c.ech.maxNameLen)
 	if encodedHelloInner == nil {
@@ -148,7 +153,11 @@ func (c *Conn) echUpdateClientHelloOuter(hello, helloInner *clientHelloMsg, enc 
 	// ClientHelloOuterAAD
 	hello.raw = nil
 	hello.ech = ech.marshal()
-	helloOuterAad := echEncodeClientHelloOuterAAD(hello.marshal(),
+	helloMarshalled, err := hello.marshal()
+	if err != nil {
+		return fmt.Errorf("tls: ech: failed to marshal hello: %w", err)
+	}
+	helloOuterAad := echEncodeClientHelloOuterAAD(helloMarshalled,
 		aead.CipherLen(uint(len(encodedHelloInner))))
 	if helloOuterAad == nil {
 		return errors.New("tls: ech: encoding of ClientHelloOuterAAD failed")
@@ -306,7 +315,11 @@ func (c *Conn) echAcceptOrReject(hello *clientHelloMsg, afterHRR bool) (*clientH
 	}
 
 	// ClientHelloOuterAAD
-	rawHelloOuterAad := echEncodeClientHelloOuterAAD(hello.marshal(), uint(len(ech.payload)))
+	helloMarshalled, err := hello.marshal()
+	if err != nil {
+		return nil, fmt.Errorf("tls: ech: failed to marshal hello: %w", err)
+	}
+	rawHelloOuterAad := echEncodeClientHelloOuterAAD(helloMarshalled, uint(len(ech.payload)))
 	if rawHelloOuterAad == nil {
 		// This occurs if the ClientHelloOuter is malformed. This values was
 		// already parsed into `hello`, so this should not happen.
@@ -332,7 +345,7 @@ func (c *Conn) echAcceptOrReject(hello *clientHelloMsg, afterHRR bool) (*clientH
 	}
 
 	// ClientHelloInner
-	rawHelloInner := echDecodeClientHelloInner(rawEncodedHelloInner, hello.marshal(), hello.sessionId)
+	rawHelloInner := echDecodeClientHelloInner(rawEncodedHelloInner, helloMarshalled, hello.sessionId)
 	if rawHelloInner == nil {
 		c.sendAlert(alertIllegalParameter)
 		return nil, fmt.Errorf("ech: failed to decode EncodedClientHelloInner")

@@ -13,7 +13,6 @@
 package main
 
 import (
-	circlSign "circl/sign"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
@@ -28,6 +27,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	circlSign "github.com/cloudflare/circl/sign"
 )
 
 var (

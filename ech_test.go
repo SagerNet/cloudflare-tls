@@ -5,6 +5,7 @@ package tls
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
@@ -220,9 +221,9 @@ type echTestCase struct {
 }
 
 // TODO(cjpatton): Add test cases for PSK interactions:
-//  - ECH bypassed, backend server consumes early data (baseline test config)
-//  - ECH accepted, backend server consumes early data
-//  - ECH rejected, client-facing server ignores early data intended for backend
+//   - ECH bypassed, backend server consumes early data (baseline test config)
+//   - ECH accepted, backend server consumes early data
+//   - ECH rejected, client-facing server ignores early data intended for backend
 var echTestCases = []echTestCase{
 	{
 		// The client offers ECH and it is accepted by the server
@@ -560,7 +561,6 @@ func echTestConn(t *testing.T, clientConfig, serverConfig *Config) (clientRes, s
 	serverCh := make(chan echTestResult, 1)
 	go func() {
 		var res echTestResult
-		serverConfig.CFEventHandler = res.eventHandler
 		serverConn, err := ln.Accept()
 		if err != nil {
 			res.err = err
@@ -574,7 +574,8 @@ func echTestConn(t *testing.T, clientConfig, serverConfig *Config) (clientRes, s
 			serverCh <- res
 		}()
 
-		if err := server.Handshake(); err != nil {
+		sCtx := context.WithValue(context.Background(), CFEventHandlerContextKey{}, res.eventHandler)
+		if err := server.HandshakeContext(sCtx); err != nil {
 			res.err = err
 			return
 		}
@@ -586,13 +587,15 @@ func echTestConn(t *testing.T, clientConfig, serverConfig *Config) (clientRes, s
 		res.connState = server.ConnectionState()
 	}()
 
-	clientConfig.CFEventHandler = clientRes.eventHandler
-	client, err := Dial("tcp", ln.Addr().String(), clientConfig)
+	cCtx := context.WithValue(context.Background(), CFEventHandlerContextKey{}, clientRes.eventHandler)
+	clientDialer := &Dialer{Config: clientConfig}
+	clientConn, err := clientDialer.DialContext(cCtx, "tcp", ln.Addr().String())
 	if err != nil {
 		serverRes = <-serverCh
 		clientRes.err = err
 		return
 	}
+	client := clientConn.(*Conn)
 	defer client.Close()
 
 	_, err = client.Write(testMessage)

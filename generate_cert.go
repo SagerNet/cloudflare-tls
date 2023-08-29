@@ -10,8 +10,6 @@
 package main
 
 import (
-	circlSign "circl/sign"
-	circlSchemes "circl/sign/schemes"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -27,6 +25,9 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	circlSign "github.com/cloudflare/circl/sign"
+	circlSchemes "github.com/cloudflare/circl/sign/schemes"
 )
 
 var (
@@ -177,7 +178,6 @@ func main() {
 	keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		log.Fatalf("Failed to open key.pem for writing: %v", err)
-		return
 	}
 	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {

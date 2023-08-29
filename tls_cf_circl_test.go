@@ -4,8 +4,6 @@
 package tls
 
 import (
-	"circl/sign"
-	"circl/sign/eddilithium3"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -13,6 +11,9 @@ import (
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/cloudflare/circl/sign"
+	"github.com/cloudflare/circl/sign/eddilithium3"
 )
 
 func TestPQSignatureSchemes(t *testing.T) {

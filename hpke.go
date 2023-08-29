@@ -4,9 +4,10 @@
 package tls
 
 import (
-	"circl/hpke"
 	"errors"
 	"fmt"
+
+	"github.com/cloudflare/circl/hpke"
 )
 
 // The mandatory-to-implement HPKE cipher suite for use with the ECH extension.
