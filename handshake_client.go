@@ -16,8 +16,10 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"internal/godebug"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -132,7 +134,7 @@ func (c *Conn) makeClientHello(minVersion uint16) (*clientHelloMsg, clientKeySha
 		hello.supportedSignatureAlgorithms = testingOnlyForceClientHelloSignatureAlgorithms
 	}
 
-	var secret clientKeySharePrivate
+	secret := make(clientKeySharePrivate)
 	if hello.supportedVersions[0] == VersionTLS13 {
 		// Reset the list of ciphers when the client only supports TLS 1.3.
 		if len(hello.supportedVersions) == 1 {
@@ -144,30 +146,74 @@ func (c *Conn) makeClientHello(minVersion uint16) (*clientHelloMsg, clientKeySha
 			hello.cipherSuites = append(hello.cipherSuites, defaultCipherSuitesTLS13NoAES...)
 		}
 
-		curveID := config.curvePreferences()[0]
-		if scheme := curveIdToCirclScheme(curveID); scheme != nil {
-			pk, sk, err := generateKemKeyPair(scheme, curveID, config.rand())
-			if err != nil {
-				return nil, nil, fmt.Errorf("generateKemKeyPair %s: %w",
-					scheme.Name(), err)
+		curveIDs := []CurveID{config.curvePreferences()[0]}
+
+		if config.ClientCurveGuess != nil {
+			curveIDs = config.ClientCurveGuess
+		}
+
+		hello.keyShares = make([]keyShare, 0, len(curveIDs))
+
+		// Check whether ClientCurveGuess is a subsequence of CurvePreferences
+		// as is required by RFC8446 §4.2.8
+		offset := 0
+		curvePreferences := config.curvePreferences()
+		found := 0
+	CurveGuessCheck:
+		for _, curveID := range curveIDs {
+			for {
+				if offset == len(curvePreferences) {
+					break CurveGuessCheck
+				}
+
+				if curvePreferences[offset] == curveID {
+					found++
+					break
+				}
+
+				offset++
 			}
-			packedPk, err := pk.MarshalBinary()
-			if err != nil {
-				return nil, nil, fmt.Errorf("pack circl public key %s: %w",
-					scheme.Name(), err)
+		}
+		if found != len(curveIDs) {
+			return nil, nil, errors.New("tls: ClientCurveGuess not a subsequence of CurvePreferences")
+		}
+
+		for _, curveID := range curveIDs {
+			var (
+				singleSecret interface{}
+				singleShare  []byte
+			)
+
+			if _, ok := secret[curveID]; ok {
+				return nil, nil, errors.New("tls: ClientCurveGuess contains duplicate")
 			}
-			hello.keyShares = []keyShare{{group: curveID, data: packedPk}}
-			secret = sk
-		} else {
-			if _, ok := curveForCurveID(curveID); !ok {
-				return nil, nil, errors.New("tls: CurvePreferences includes unsupported curve")
+
+			if scheme := curveIdToCirclScheme(curveID); scheme != nil {
+				pk, sk, err := generateKemKeyPair(scheme, curveID, config.rand())
+				if err != nil {
+					return nil, nil, fmt.Errorf("generateKemKeyPair %s: %w",
+						scheme.Name(), err)
+				}
+				packedPk, err := pk.MarshalBinary()
+				if err != nil {
+					return nil, nil, fmt.Errorf("pack circl public key %s: %w",
+						scheme.Name(), err)
+				}
+				singleShare = packedPk
+				singleSecret = sk
+			} else {
+				if _, ok := curveForCurveID(curveID); !ok {
+					return nil, nil, errors.New("tls: CurvePreferences includes unsupported curve")
+				}
+				key, err := generateECDHEKey(config.rand(), curveID)
+				if err != nil {
+					return nil, nil, err
+				}
+				singleShare = key.PublicKey().Bytes()
+				singleSecret = key
 			}
-			key, err := generateECDHEKey(config.rand(), curveID)
-			if err != nil {
-				return nil, nil, err
-			}
-			hello.keyShares = []keyShare{{group: curveID, data: key.PublicKey().Bytes()}}
-			secret = key
+			hello.keyShares = append(hello.keyShares, keyShare{group: curveID, data: singleShare})
+			secret[curveID] = singleSecret
 		}
 
 		hello.delegatedCredentialSupported = config.SupportDelegatedCredential
@@ -990,9 +1036,23 @@ func (hs *clientHandshakeState) sendFinished(out []byte) error {
 	return nil
 }
 
-// maxRSAKeySize is the maximum RSA key size in bits that we are willing
+// defaultMaxRSAKeySize is the maximum RSA key size in bits that we are willing
 // to verify the signatures of during a TLS handshake.
-const maxRSAKeySize = 8192
+const defaultMaxRSAKeySize = 8192
+
+var tlsmaxrsasize = godebug.New("tlsmaxrsasize")
+
+func checkKeySize(n int) (max int, ok bool) {
+	if v := tlsmaxrsasize.Value(); v != "" {
+		if max, err := strconv.Atoi(v); err == nil {
+			if (n <= max) != (n <= defaultMaxRSAKeySize) {
+				tlsmaxrsasize.IncNonDefault()
+			}
+			return max, n <= max
+		}
+	}
+	return defaultMaxRSAKeySize, n <= defaultMaxRSAKeySize
+}
 
 // verifyServerCertificate parses and verifies the provided chain, setting
 // c.verifiedChains and c.peerCertificates or sending the appropriate alert.
@@ -1005,9 +1065,12 @@ func (c *Conn) verifyServerCertificate(certificates [][]byte) error {
 			c.sendAlert(alertBadCertificate)
 			return errors.New("tls: failed to parse certificate from server: " + err.Error())
 		}
-		if cert.cert.PublicKeyAlgorithm == x509.RSA && cert.cert.PublicKey.(*rsa.PublicKey).N.BitLen() > maxRSAKeySize {
-			c.sendAlert(alertBadCertificate)
-			return fmt.Errorf("tls: server sent certificate containing RSA key larger than %d bits", maxRSAKeySize)
+		if cert.cert.PublicKeyAlgorithm == x509.RSA {
+			n := cert.cert.PublicKey.(*rsa.PublicKey).N.BitLen()
+			if max, ok := checkKeySize(n); !ok {
+				c.sendAlert(alertBadCertificate)
+				return fmt.Errorf("tls: server sent certificate containing RSA key larger than %d bits", max)
+			}
 		}
 		activeHandles[i] = cert
 		certs[i] = cert.cert

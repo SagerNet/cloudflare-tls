@@ -22,14 +22,15 @@ import (
 	"fmt"
 	"io"
 
-	"crypto/ecdh"
-
+	"github.com/cloudflare/circl/hpke"
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/hybrid"
 )
 
 // Either *ecdh.PrivateKey or *kemPrivateKey
-type clientKeySharePrivate interface{}
+type singleClientKeySharePrivate interface{}
+
+type clientKeySharePrivate map[CurveID]singleClientKeySharePrivate
 
 type kemPrivateKey struct {
 	secretKey kem.PrivateKey
@@ -42,22 +43,16 @@ var (
 	X25519Kyber768Draft00Old = CurveID(0xfe31)
 	P256Kyber768Draft00      = CurveID(0xfe32)
 	invalidCurveID           = CurveID(0)
+
+	// A key agreeement similar in size but purposefully incompatible with
+	// X25519. The goal is to have a key agreement that servers will not
+	// support, so we can test HelloRetryRquest.
+	DummyKex = CurveID(0xfe33)
 )
 
-// Extract CurveID from clientKeySharePrivate
-func clientKeySharePrivateCurveID(ks clientKeySharePrivate) CurveID {
-	switch v := ks.(type) {
-	case *kemPrivateKey:
-		return v.curveID
-	case *ecdh.PrivateKey:
-		ret, ok := curveIDForCurve(v.Curve())
-		if !ok {
-			panic("cfkem: internal error: unknown curve")
-		}
-		return ret
-	default:
-		panic("cfkem: internal error: unknown clientKeySharePrivate")
-	}
+func singleClientKeySharePrivateFor(ks clientKeySharePrivate, group CurveID) singleClientKeySharePrivate {
+	ret, _ := ks[group]
+	return ret
 }
 
 // Returns scheme by CurveID if supported by Circl
@@ -69,6 +64,8 @@ func curveIdToCirclScheme(id CurveID) kem.Scheme {
 		return hybrid.Kyber768X25519()
 	case P256Kyber768Draft00:
 		return hybrid.P256Kyber768Draft00()
+	case DummyKex:
+		return hpke.KEM_X25519_HKDF_SHA256.Scheme()
 	}
 	return nil
 }

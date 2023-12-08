@@ -95,6 +95,7 @@ func TestHybridKEX(t *testing.T) {
 		X25519Kyber768Draft00,
 		X25519Kyber768Draft00Old,
 		P256Kyber768Draft00,
+		DummyKex,
 	} {
 		run(curveID, true, true, false, false)
 		run(curveID, true, false, false, false)
@@ -102,5 +103,50 @@ func TestHybridKEX(t *testing.T) {
 		run(curveID, true, true, true, false)
 		run(curveID, true, true, false, true)
 		run(curveID, true, true, true, true)
+	}
+}
+
+func TestClientCurveGuess(t *testing.T) {
+	run := func(guess, clientPrefs, serverPrefs []CurveID) {
+		t.Run(
+			fmt.Sprintf("guess=%v clientPrefs=%v serverPrefs=%v",
+				guess, clientPrefs, serverPrefs),
+			func(t *testing.T) {
+				testClientCurveGuess(t, guess, clientPrefs, serverPrefs)
+			})
+	}
+	both := []CurveID{X25519Kyber768Draft00, X25519}
+	run([]CurveID{}, []CurveID{X25519}, both)
+	run([]CurveID{X25519}, []CurveID{X25519}, both)
+	run([]CurveID{X25519Kyber768Draft00}, both, []CurveID{X25519})
+	run(both, both, both)
+	run(both, both, []CurveID{X25519})
+	run(both, both, []CurveID{X25519Kyber768Draft00})
+}
+
+func testClientCurveGuess(t *testing.T, guess, clientPrefs, serverPrefs []CurveID) {
+	clientConfig := testConfig.Clone()
+	serverConfig := testConfig.Clone()
+	serverConfig.CurvePreferences = serverPrefs
+	clientConfig.CurvePreferences = clientPrefs
+	clientConfig.ClientCurveGuess = guess
+
+	c, s := localPipe(t)
+	done := make(chan error)
+	defer c.Close()
+
+	go func() {
+		defer s.Close()
+		done <- Server(s, serverConfig).Handshake()
+	}()
+
+	cli := Client(c, clientConfig)
+	clientErr := cli.HandshakeContext(context.Background())
+	serverErr := <-done
+	if clientErr != nil {
+		t.Errorf("client error: %v", clientErr)
+	}
+	if serverErr != nil {
+		t.Errorf("server error: %v", serverErr)
 	}
 }
