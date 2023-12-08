@@ -240,7 +240,7 @@ func getHash(scheme SignatureScheme) crypto.Hash {
 	case PSSWithSHA512:
 		return crypto.SHA512
 	default:
-		return 0 //Unknown hash function
+		return 0 // Unknown hash function
 	}
 }
 
@@ -403,8 +403,10 @@ func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTim
 			return nil, nil, err
 		}
 	case *rsa.PrivateKey:
-		opts := &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash,
-			Hash: hash}
+		opts := &rsa.PSSOptions{
+			SaltLength: rsa.PSSSaltLengthEqualsHash,
+			Hash:       hash,
+		}
 		sig, err = rsa.SignPSS(rand.Reader, sk, hash, values, opts)
 		if err != nil {
 			return nil, nil, err

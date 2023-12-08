@@ -9,7 +9,6 @@ import (
 	"io"
 
 	"github.com/cloudflare/circl/hpke"
-
 	"golang.org/x/crypto/cryptobyte"
 )
 
@@ -28,9 +27,7 @@ const (
 	echClientHelloInnerVariant uint8 = 1
 )
 
-var (
-	zeros = [8]byte{}
-)
+var zeros = [8]byte{}
 
 // echOfferOrGrease is called by the client after generating its ClientHello
 // message to decide if it will offer or GREASE ECH. It does neither if ECH is
@@ -485,7 +482,7 @@ type hpkeSymmetricCipherSuite struct {
 // Generates a grease ECH extension using a hard-coded KEM public key.
 func echGenerateGreaseExt(rand io.Reader) ([]byte, error) {
 	var err error
-	var dummyX25519PublicKey = []byte{
+	dummyX25519PublicKey := []byte{
 		143, 38, 37, 36, 12, 6, 229, 30, 140, 27, 167, 73, 26, 100, 203, 107, 216,
 		81, 163, 222, 52, 211, 54, 210, 46, 37, 78, 216, 157, 97, 241, 244,
 	}

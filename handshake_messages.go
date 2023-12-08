@@ -1995,8 +1995,7 @@ func (m *newSessionTicketMsg) unmarshal(data []byte) bool {
 	return true
 }
 
-type helloRequestMsg struct {
-}
+type helloRequestMsg struct{}
 
 func (*helloRequestMsg) marshal() ([]byte, error) {
 	return []byte{typeHelloRequest, 0, 0, 0}, nil

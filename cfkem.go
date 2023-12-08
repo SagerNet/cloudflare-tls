@@ -73,7 +73,8 @@ func curveIdToCirclScheme(id CurveID) kem.Scheme {
 // Generate a new shared secret and encapsulates it for the packed
 // public key in ppk using randomness from rnd.
 func encapsulateForKem(scheme kem.Scheme, rnd io.Reader, ppk []byte) (
-	ct, ss []byte, alert alert, err error) {
+	ct, ss []byte, alert alert, err error,
+) {
 	pk, err := scheme.UnmarshalBinaryPublicKey(ppk)
 	if err != nil {
 		return nil, nil, alertIllegalParameter, fmt.Errorf("unpack pk: %w", err)
@@ -88,7 +89,8 @@ func encapsulateForKem(scheme kem.Scheme, rnd io.Reader, ppk []byte) (
 
 // Generate a new keypair using randomness from rnd.
 func generateKemKeyPair(scheme kem.Scheme, curveID CurveID, rnd io.Reader) (
-	kem.PublicKey, *kemPrivateKey, error) {
+	kem.PublicKey, *kemPrivateKey, error,
+) {
 	seed := make([]byte, scheme.SeedSize())
 	if _, err := io.ReadFull(rnd, seed); err != nil {
 		return nil, nil, err

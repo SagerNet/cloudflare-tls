@@ -1031,7 +1031,6 @@ func (c *Config) initLegacySessionTicketKeyRLocked() {
 	} else if !bytes.HasPrefix(c.SessionTicketKey[:], deprecatedSessionTicketKey) && len(c.sessionTicketKeys) == 0 {
 		c.sessionTicketKeys = []ticketKey{c.ticketKeyFromBytes(c.SessionTicketKey)}
 	}
-
 }
 
 // ticketKeys returns the ticketKeys for this connection.
@@ -1161,8 +1160,10 @@ var supportedVersions = []uint16{
 
 // roleClient and roleServer are meant to call supportedVersions and parents
 // with more readability at the callsite.
-const roleClient = true
-const roleServer = false
+const (
+	roleClient = true
+	roleServer = false
+)
 
 func (c *Config) supportedVersions(isClient bool) []uint16 {
 	versions := make([]uint16, 0, len(supportedVersions))

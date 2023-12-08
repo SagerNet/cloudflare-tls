@@ -10,7 +10,6 @@ import (
 
 	"github.com/cloudflare/circl/hpke"
 	"github.com/cloudflare/circl/kem"
-
 	"golang.org/x/crypto/cryptobyte"
 )
 
